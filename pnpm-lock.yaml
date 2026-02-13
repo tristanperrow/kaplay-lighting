@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       kaplay:
-        specifier: ^4000.0.0-alpha.16
-        version: 4000.0.0-alpha.20
+        specifier: 4000.0.0-alpha.24
+        version: 4000.0.0-alpha.24
     devDependencies:
       '@types/node':
         specifier: ^22.10.5
@@ -523,8 +523,8 @@ packages:
   jsonfile@6.1.0:
     resolution: {integrity: sha512-5dgndWOriYSm5cnYaJNhalLNDKOqFwyDB/rr1E9ZsGciGvKPs8R2xYGCacuf3z6K1YKDz182fd+fY3cn3pMqXQ==}
 
-  kaplay@4000.0.0-alpha.20:
-    resolution: {integrity: sha512-aK1jlGdzYeFvakx+BKdQZ4vGZhLQujU/3sWJX+ZrJP893wLkFbgZezavKJRGQ7ystkrFpyCWoPNWn3Kj8nKfng==}
+  kaplay@4000.0.0-alpha.24:
+    resolution: {integrity: sha512-3+lK8zj4Hx6D4V9xUP3L9KfGNXCjuVAaos8tGW/BfoeSeyjHFSVVb33jOjN0GZx+6soqYoHP6qi4JrbQM3EcRw==}
     engines: {node: '>=20.0.0'}
 
   kolorist@1.8.0:
@@ -1145,7 +1145,7 @@ snapshots:
     optionalDependencies:
       graceful-fs: 4.2.11
 
-  kaplay@4000.0.0-alpha.20: {}
+  kaplay@4000.0.0-alpha.24: {}
 
   kolorist@1.8.0: {}
 

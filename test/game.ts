@@ -1,8 +1,9 @@
-import kaplay from "kaplay";
-import LightingPlugin from "../src/plugin"
+import kaplay, { Color, GameObj, RotateComp, Tag, Vec2 } from "kaplay";
+import kaplayLighting, { LightComp } from "../src/plugin";
 
 const k = kaplay({
-    plugins: [LightingPlugin]
+    plugins: [kaplayLighting],
+    pixelDensity: Math.min(2, devicePixelRatio),
 });
 
 // load sprites
@@ -91,6 +92,7 @@ k.scene("main", () => {
         k.anchor("center"),
         k.color(20, 20, 20),
         k.litShader("litSprite"),
+        "torchLit"
     ])
 
     for (let i = 0; i < k.width() / 32; i++) {
@@ -99,7 +101,7 @@ k.scene("main", () => {
             k.sprite("sb"),
             k.scale(2),
             k.anchor("botleft"),
-            k.litShader("litSprite", k.getNormalMapInput("sb", "sb-nm")),
+            k.litShader("litSprite", { nmSprite: "sb-nm" }),
         ])
     }
 
@@ -115,7 +117,7 @@ k.scene("main", () => {
                 k.area(),
                 k.body({ isStatic: true }),
                 k.scale(2),
-                k.litShader("litSprite", k.getNormalMapInput("sb-tl", "sb-tl-nm")),
+                k.litShader("litSprite", { nmSprite: "sb-tl-nm" }),
             ],
             "-": () => [
                 k.pos(),
@@ -123,7 +125,7 @@ k.scene("main", () => {
                 k.area(),
                 k.body({ isStatic: true }),
                 k.scale(2),
-                k.litShader("litSprite", k.getNormalMapInput("sb-tp", "sb-tp-nm")),
+                k.litShader("litSprite", { nmSprite: "sb-tp-nm" }),
             ],
             "]": () => [
                 k.pos(),
@@ -131,32 +133,39 @@ k.scene("main", () => {
                 k.area(),
                 k.body({ isStatic: true }),
                 k.scale(2),
-                k.litShader("litSprite", k.getNormalMapInput("sb-tr", "sb-tr-nm")),
+                k.litShader("litSprite", { nmSprite: "sb-tr-nm" }),
             ]
         }
     })
 
     level.pos = k.vec2(k.width() / 2 - 80, k.height() - 64);
 
-    let torch = k.add([
-        k.pos(k.width() / 2, k.height() - 56),
-        k.sprite("torch"),
-        k.anchor("bot"),
-        k.litShader("litSprite", k.getNormalMapInput("torch", "torch-nm")),
-    ])
+    function addTorch(pos: Vec2, color = k.WHITE, tags: Tag[] = []) {
+        const torch = k.add([
+            k.pos(pos),
+            k.sprite("torch"),
+            k.anchor("bot"),
+            k.litShader("litSprite", { nmSprite: "torch-nm" }),
+        ])
 
-    let torchlight = torch.add([
-        k.pos(0, -32),
-        k.light({ radius: 0.2, color: new k.Color(255, 140, 0) }),
-        {
-            update() {
-                this.light.strength = k.wave(0.5, 2, k.time() * 2 + k.wave(-2, 2, k.time() * 7));
-                this.light.radius = k.wave(0.1, 0.2, k.time() * 3 + k.wave(-.2, .2, k.time() * 8));
-            }
-        },
-    ])
+        const torchlight = torch.add([
+            k.pos(0, -32),
+            k.lightSource({ far: 0.2, color, includeTags: tags }),
+            {
+                update(this: GameObj<LightComp>) {
+                    this.light!.strength = k.wave(0.5, 2, k.time() * 2 + k.wave(-2, 2, k.time() * 7));
+                    this.light!.far = k.wave(100, 200, k.time() * 3 + k.wave(-.2, .2, k.time() * 8));
+                }
+            },
+        ])
 
-    console.log(torchlight)
+        console.log(torchlight)
+
+        return torch;
+    }
+
+    addTorch(k.vec2(k.width() / 2, k.height() - 56), k.rgb(255, 140, 0));
+
 
     // test unlit background
     let bgLit = true;
@@ -170,7 +179,7 @@ k.scene("main", () => {
         bgLit = !bgLit;
     })
 
-    let bgText = k.add([
+    k.add([
         k.pos(k.width() / 2, 64),
         k.anchor("center"),
         k.text("Press 'T' to toggle background being lit.", {
@@ -178,104 +187,149 @@ k.scene("main", () => {
         })
     ])
 
+    function title(obj: GameObj, text: string) {
+        obj.add([
+            k.pos(0, -32),
+            k.anchor("bot"),
+            k.text(text, {
+                align: "center",
+                size: 20
+            })
+        ])
+    }
+
     // test custom shader
-    let csBlock = k.add([
-        k.pos(3 * k.width() / 4, k.height() / 2),
+    const csBlock = k.add([
+        k.pos(4 * k.width() / 5, k.height() / 2),
         k.sprite("steel"),
         k.anchor("center"),
         k.litShader("test"),
-    ])
+    ]);
 
-    let csText = csBlock.add([
-        k.pos(0, -64),
+    title(csBlock, "Custom Shader");
+
+    // test normal maps
+    const nmBlock = k.add([
+        k.pos(3 * k.width() / 5, k.height() / 2),
+        k.sprite("steel"),
         k.anchor("center"),
-        k.text("Test Custom Shader", {
-            align: "center",
-        })
+        k.litShader("litSprite", { nmSprite: "steel-nm" }),
+        k.skew(0, 0),
     ])
 
+    title(nmBlock, "Normal Map");
+
+    // test both
+    const bothBlock = k.add([
+        k.pos(2 * k.width() / 5, k.height() / 2),
+        k.sprite("steel"),
+        k.anchor("center"),
+        k.litShader("test", { nmSprite: "steel-nm" }),
+    ])
+
+    title(bothBlock, "Shader\n&\nNormal Map")
+
+    // test tags & spinning
+    const tagsBlock = k.add([
+        k.pos(1 * k.width() / 5, k.height() / 2),
+        k.sprite("steel"),
+        k.anchor("center"),
+        k.rotate(),
+        k.litShader("litSprite", { nmSprite: "steel-nm" }),
+        "torchLit"
+    ])
+
+    tagsBlock.onUpdate(() => {
+        tagsBlock.angle += 200 * k.dt();
+    })
+
+    nmBlock.onUpdate(() => {
+        nmBlock.skew = k.vec2(k.wave(-20, 20, k.time() * 3), 0);
+    })
+
+    title(tagsBlock, "Tags");
+
+    const SPEED = 500;
     k.onKeyDown("left", () => {
-        csBlock.pos.x -= 8
+        csBlock.move(-SPEED, 0);
+        nmBlock.move(-SPEED, 0);
+        bothBlock.move(-SPEED, 0);
+        tagsBlock.move(-SPEED, 0);
     })
 
     k.onKeyDown("right", () => {
-        csBlock.pos.x += 8
+        csBlock.move(SPEED, 0);
+        nmBlock.move(SPEED, 0);
+        bothBlock.move(SPEED, 0);
+        tagsBlock.move(SPEED, 0);
     })
 
     k.onKeyDown("up", () => {
-        csBlock.pos.y -= 8
+        csBlock.move(0, -SPEED);
+        nmBlock.move(0, -SPEED);
+        bothBlock.move(0, -SPEED);
+        tagsBlock.move(0, -SPEED);
     })
 
     k.onKeyDown("down", () => {
-        csBlock.pos.y += 8
+        csBlock.move(0, SPEED);
+        nmBlock.move(0, SPEED);
+        bothBlock.move(0, SPEED);
+        tagsBlock.move(0, SPEED);
     })
 
-    // test normal maps
-    let nmBlock = k.add([
-        k.pos(k.width() / 4, k.height() / 2),
-        k.sprite("steel"),
-        k.anchor("center"),
-        k.litShader("litSprite", k.getNormalMapInput("steel", "steel-nm")),
-    ])
 
-    let nmText = nmBlock.add([
-        k.pos(0, -64),
-        k.anchor("center"),
-        k.text("Test Normal Maps", {
-            align: "center",
-        })
-    ])
+    addTorch(k.vec2(k.width() / 4, k.height() - 24), k.rgb(0, 149, 255), ["torchLit"]);
 
-    // test both
-    let bothBlock = k.add([
-        k.pos(k.width() / 2, k.height() / 2),
-        k.sprite("steel"),
-        k.anchor("center"),
-        k.litShader("test", k.getNormalMapInput("steel", "steel-nm")),
-    ])
+    const torch1 = addTorch(k.vec2(3 * k.width() / 4 + 20, 2 * k.height() / 3));
+    const torch2 = addTorch(k.vec2(3 * k.width() / 4, 2 * k.height() / 3));
 
-    let bothText = bothBlock.add([
-        k.pos(0, -64),
-        k.anchor("center"),
-        k.text("Testing Both", {
-            align: "center",
-        })
-    ])
+    torch2.use(k.rotate(0));
+    torch2.anchor = "center";
+    torch1.children[0].destroy()
+    torch2.children[0].destroy()
+    torch2.use({
+        update(this: GameObj<RotateComp>) {
+            this.angle += 200 * k.dt();
+        }
+    });
+    torch2.use(k.area())
 
     // test alpha 16
-    let speed = 16;
     k.onKeyDown("w", () => {
-        k.setCamPos(k.getCamPos().add(0, -speed));
+        k.setCamPos(k.getCamPos().add(0, -SPEED * k.dt()));
     })
 
     k.onKeyDown("s", () => {
-        k.setCamPos(k.getCamPos().add(0, speed));
+        k.setCamPos(k.getCamPos().add(0, SPEED * k.dt()));
     })
 
     k.onKeyDown("a", () => {
-        k.setCamPos(k.getCamPos().add(-speed, 0));
+        k.setCamPos(k.getCamPos().add(-SPEED * k.dt(), 0));
     })
 
     k.onKeyDown("d", () => {
-        k.setCamPos(k.getCamPos().add(speed, 0));
+        k.setCamPos(k.getCamPos().add(SPEED * k.dt(), 0));
     })
 
-    let max = 30;
-    let min = 3;
+    const max = 30;
+    const min = 3;
     k.onScroll((d) => {
-        k.setCamScale(k.clamp(k.getCamScale().y - d.y / 1000, 1 / max, min), k.clamp(k.getCamScale().y - d.y / 1000, 1 / max, min));
+        k.setCamScale(k.vec2(k.clamp(k.getCamScale().y - d.y / 1000, 1 / max, min)));
     })
 
-    /*
-    *  LIGHTING
-    */
-    let mouseLight = new k.Light(1.0, 0.25, k.center());
+    const mouseLight = new k.Light("point", 1.0, 50, 200, k.center());
+
+    const spotLight = new k.Light("spot", 2, 50, 500, k.center(), k.WHITE, 0, undefined, 0, 20);
 
     k.setGlobalLight({
         intensity: 0.5,
     })
 
     k.onUpdate(() => {
-        mouseLight.pos = k.toWorld(k.mousePos());
+        const d = spotLight.pos.sub(mouseLight.pos = k.toWorld(k.mousePos()));
+        spotLight.direction = d.angle() + 180;
+        spotLight.spread = k.rad2deg(Math.atan2(100, d.len()));
+        // spotLight.color = k.Color.fromHSL((k.time() / 3) % 1, 1, .5);
     })
 })

@@ -26,7 +26,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "kaplay": "^4000.0.0-alpha.16"
+    "kaplay": "4000.0.0-alpha.24"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
